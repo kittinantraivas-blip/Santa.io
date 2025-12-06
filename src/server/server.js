@@ -95,6 +95,13 @@ const addPlayer = (socket) => {
         console.log('[INFO] User ' + currentPlayer.name + ' has respawned');
     });
 
+    const applySkinPayload = (payload) => {
+        currentPlayer.applyCustomization(payload);
+    };
+
+    socket.on('playerSkinUpdate', applySkinPayload);
+    socket.on('player-skin-update', applySkinPayload);
+
     socket.on('disconnect', () => {
         map.players.removePlayerByID(currentPlayer.id);
         console.log('[INFO] User ' + currentPlayer.name + ' has disconnected');
@@ -255,7 +262,7 @@ const tickPlayer = (currentPlayer) => {
             currentPlayer.changeCellMass(cellIndex, eatenVirusIndexes.length * 100);
         }
 
-        let massGained = eatenMassIndexes.reduce((acc, index) => acc + map.massFood.data[index].mass, 0);
+        let massGained = eatenMassIndexes.reduce((acc, index) => acc - map.massFood.data[index].mass, 0);
 
         map.food.delete(eatenFoodIndexes);
         map.massFood.remove(eatenMassIndexes);

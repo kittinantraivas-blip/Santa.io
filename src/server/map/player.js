@@ -10,6 +10,10 @@ const SPEED_DECREMENT = 0.5;
 const MIN_DISTANCE = 50;
 const PUSHING_AWAY_SPEED = 1.1;
 const MERGE_TIMER = 15;
+const DEFAULT_SKIN_URL = 'img/skins/composed/skin_1_1.png';
+const DEFAULT_OVERLAY_COLOR = '#FF7A00';
+const DEFAULT_TURRET_URL = 'img/turrets/direction1.png';
+const HEX_COLOR_REGEX = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
 
 class Cell {
     constructor(x, y, mass, speed) {
@@ -18,6 +22,8 @@ class Cell {
         this.mass = mass;
         this.radius = util.massToRadius(mass);
         this.speed = speed;
+        // Movement direction (radians) for turret orientation
+        this.angle = 0;
     }
 
     setMass(mass) {
@@ -82,25 +88,7 @@ class Cell {
                     const currentDx = this.x - virus.x;
                     const currentDy = this.y - virus.y;
                     const currentDistance = Math.sqrt(currentDx * currentDx + currentDy * currentDy);
-                    
-                    // If already overlapping, push away
-                    if (currentDistance < combinedRadius) {
-                        if (currentDistance > 0) {
-                            const pushFactor = (combinedRadius - currentDistance + 1) / currentDistance;
-                            this.x = virus.x + currentDx * pushFactor;
-                            this.y = virus.y + currentDy * pushFactor;
-                        } else {
-                            // If exactly on top, push in random direction
-                            const randomAngle = Math.random() * 2 * Math.PI;
-                            this.x = virus.x + Math.cos(randomAngle) * combinedRadius;
-                            this.y = virus.y + Math.sin(randomAngle) * combinedRadius;
-                        }
-                        
-                        // Apply speed reduction on collision
-                        this.speed = Math.max(MIN_SPEED, this.speed * 0.5);
-                        return; // Don't apply normal movement
-                    }
-                    
+
                     // Block movement toward virus by projecting movement away from virus
                     if (currentDistance > 0) {
                         const normalX = currentDx / currentDistance;
@@ -120,6 +108,11 @@ class Cell {
                     }
                 }
             }
+        }
+
+        // Update facing angle based on the final movement delta
+        if (!isNaN(deltaX) && !isNaN(deltaY) && (deltaX !== 0 || deltaY !== 0)) {
+            this.angle = Math.atan2(deltaY, deltaX);
         }
 
         if (!isNaN(deltaY)) {
@@ -153,6 +146,9 @@ exports.Player = class {
         this.screenWidth = null;
         this.screenHeight = null;
         this.timeToMerge = null;
+        this.skinUrl = DEFAULT_SKIN_URL;
+        this.overlayColor = DEFAULT_OVERLAY_COLOR;
+        this.turretUrl = DEFAULT_TURRET_URL;
         this.setLastHeartbeat();
     }
 
@@ -172,7 +168,36 @@ exports.Player = class {
         this.name = playerData.name;
         this.screenWidth = playerData.screenWidth;
         this.screenHeight = playerData.screenHeight;
+        this.applyCustomization(playerData);
         this.setLastHeartbeat();
+    }
+
+    applyCustomization(data) {
+        if (!data) return;
+
+        if (typeof data.skinUrl === 'string') {
+            const trimmed = data.skinUrl.trim();
+            if (trimmed && trimmed.startsWith('img/')) {
+                this.skinUrl = trimmed;
+            } else if (!this.skinUrl) {
+                this.skinUrl = DEFAULT_SKIN_URL;
+            }
+        }
+
+        if (typeof data.overlayColor === 'string' && HEX_COLOR_REGEX.test(data.overlayColor)) {
+            this.overlayColor = data.overlayColor;
+        } else if (!this.overlayColor) {
+            this.overlayColor = DEFAULT_OVERLAY_COLOR;
+        }
+
+        if (typeof data.turretUrl === 'string') {
+            const trimmedTurret = data.turretUrl.trim();
+            if (trimmedTurret && trimmedTurret.startsWith('img/')) {
+                this.turretUrl = trimmedTurret;
+            } else if (!this.turretUrl) {
+                this.turretUrl = DEFAULT_TURRET_URL;
+            }
+        }
     }
 
     setLastHeartbeat() {

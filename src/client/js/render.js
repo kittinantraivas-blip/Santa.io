@@ -1,6 +1,121 @@
 const FULL_ANGLE = 2 * Math.PI;
 const imageLoader = require('./imageLoader');
 
+const DEFAULT_SKIN_URL = 'img/skins/composed/skin_1_1.png';
+const DEFAULT_OVERLAY_COLOR = '#FF7A00';
+const DEFAULT_TURRET_URL = 'img/turrets/direction1.png';
+const HEX_COLOR_REGEX = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
+const skinImageCache = new Map();
+
+function getSessionSkinUrl() {
+    try {
+        const value = sessionStorage.getItem('player_skin_url');
+        if (value && typeof value === 'string') {
+            const trimmed = value.trim();
+            if (trimmed && trimmed.startsWith('img/')) {
+                return trimmed;
+            }
+        }
+    } catch (e) {}
+    return DEFAULT_SKIN_URL;
+}
+
+function getSessionOverlayColor() {
+    try {
+        const c = sessionStorage.getItem('player_overlay_color');
+        if (c && HEX_COLOR_REGEX.test(c)) {
+            return c;
+        }
+    } catch (e) {}
+    return DEFAULT_OVERLAY_COLOR;
+}
+
+function getSessionTurretUrl() {
+    try {
+        const value = sessionStorage.getItem('player_turret_url');
+        if (value && typeof value === 'string') {
+            const trimmed = value.trim();
+            if (trimmed && trimmed.startsWith('img/')) {
+                return trimmed;
+            }
+        }
+    } catch (e) {}
+    return DEFAULT_TURRET_URL;
+}
+
+function getOrLoadSkin(url) {
+    if (!url) return null;
+    let cached = skinImageCache.get(url);
+    if (!cached) {
+        const img = new Image();
+        img.src = url;
+        skinImageCache.set(url, img);
+        return img;
+    }
+    return cached;
+}
+
+function getOrLoadTurret(url) {
+    if (!url) return null;
+    return getOrLoadSkin(url);
+}
+
+function resolveSkinUrl(cell) {
+    if (cell && typeof cell.skinUrl === 'string') {
+        const trimmed = cell.skinUrl.trim();
+        if (trimmed && trimmed.startsWith('img/')) {
+            return trimmed;
+        }
+    }
+    if (cell && cell.isLocal === true) {
+        return getSessionSkinUrl();
+    }
+    return DEFAULT_SKIN_URL;
+}
+
+function resolveOverlayColor(cell) {
+    if (cell && typeof cell.overlayColor === 'string' && HEX_COLOR_REGEX.test(cell.overlayColor)) {
+        return cell.overlayColor;
+    }
+    if (cell && cell.isLocal === true) {
+        return getSessionOverlayColor();
+    }
+    return null;
+}
+
+function resolveTurretUrl(cell) {
+    if (cell && typeof cell.turretUrl === 'string') {
+        const trimmed = cell.turretUrl.trim();
+        if (trimmed && trimmed.startsWith('img/')) {
+            return trimmed;
+        }
+    }
+    if (cell && cell.isLocal === true) {
+        return getSessionTurretUrl();
+    }
+    return DEFAULT_TURRET_URL;
+}
+
+function getEffectiveOverlayColor(cell) {
+    const resolved = resolveOverlayColor(cell);
+    if (resolved) return resolved;
+    if (cell && typeof cell.color === 'string' && cell.color) {
+        return cell.color;
+    }
+    if (cell && typeof cell.borderColor === 'string' && cell.borderColor) {
+        return cell.borderColor;
+    }
+    return DEFAULT_OVERLAY_COLOR;
+}
+
+function isImageRenderable(img) {
+    return !!(img && img.complete && img.naturalWidth > 0);
+}
+
+function isImageFailed(img) {
+    return !!(img && img.complete && img.naturalWidth === 0);
+}
+
 const drawRoundObject = (position, radius, graph) => {
     graph.beginPath();
     graph.arc(position.x, position.y, radius, 0, FULL_ANGLE);
@@ -10,27 +125,32 @@ const drawRoundObject = (position, radius, graph) => {
 }
 
 const drawFood = (position, food, graph) => {
-    const foodImage = imageLoader.getImage('food');
+    // Choose sprite based on server-provided index (1-4)
+    const idx = Number(food && food.spriteIndex) || 1;
+    const clampedIdx = Math.min(Math.max(idx, 1), 4);
+    const key = 'food' + clampedIdx;
+    const foodImage = imageLoader.getImage(key) || imageLoader.getImage('food');
     
     if (foodImage && !imageLoader.failedToLoad) {
-        // Draw food.png UNDERNEATH the original circle
-        const diameter = food.radius * 6;
+        // Draw food.png above the original circle
+        const diameter = food.radius * 8.5;
         
         graph.save();
-        
-        // First: Draw food.png image at the bottom layer
-        graph.drawImage(foodImage, 
-            position.x - food.radius * 3, position.y - food.radius * 3.5,
-            diameter, diameter);
-        
-        // Second: Draw semi-transparent colored circle on top
-        graph.globalAlpha = 0.5; // 70% opacity for overlay
+    
+        // First: Draw semi-transparent colored circle at the bottom 
+        graph.globalAlpha = 1; // 70% opacity for overlay
         graph.fillStyle = 'hsl(' + food.hue + ', 100%, 50%)';
         graph.strokeStyle = 'hsl(' + food.hue + ', 100%, 45%)';
         graph.lineWidth = 0;
         graph.beginPath();
         graph.arc(position.x, position.y, food.radius, 0, FULL_ANGLE);
         graph.fill();
+
+        // Second: Draw food.png image on the top layer
+        graph.drawImage(foodImage, 
+            position.x - food.radius * 4.25, position.y - food.radius * 5.25,
+            diameter, diameter);
+
         
         // Reset globalAlpha
         graph.globalAlpha = 1.0;
@@ -104,6 +224,7 @@ const drawFireFood = (position, mass, playerConfig, graph) => {
         graph.save();
         
         // Apply color tinting
+        mass.hue = '#ffffff98';
         graph.globalCompositeOperation = 'source-over';
         graph.fillStyle = 'hsl(' + mass.hue + ', 100%, 50%)';
         graph.beginPath();
@@ -111,15 +232,15 @@ const drawFireFood = (position, mass, playerConfig, graph) => {
         graph.fill();
         
         // Draw the image with multiply blend for tinting
-        graph.globalCompositeOperation = 'multiply';
         graph.drawImage(massFoodImage,
             position.x - (mass.radius - 1), position.y - (mass.radius - 1),
             diameter, diameter);
+        graph.globalCompositeOperation = 'multiply';
             
         // Add border
         graph.globalCompositeOperation = 'source-over';
         graph.strokeStyle = 'hsl(' + mass.hue + ', 100%, 35%)';
-        graph.lineWidth = 2;
+        graph.lineWidth = 0;
         graph.beginPath();
         graph.arc(position.x, position.y, mass.radius - 1, 0, FULL_ANGLE);
         graph.stroke();
@@ -170,67 +291,120 @@ const drawCellWithLines = (cell, borders, graph) => {
 }
 
 const drawCells = (cells, playerConfig, toggleMassState, borders, graph) => {
-    const playerImage = imageLoader.getImage('player');
-    
     for (let cell of cells) {
-        if (playerImage && !imageLoader.failedToLoad) {
-            // Draw player.png LARGER than the cell (1.3x scaling factor)
-            const scaledRadius = cell.radius * 2; // Scale up by 1.3x
-            const scaledDiameter = scaledRadius * 2;
-            
+        const skinUrl = resolveSkinUrl(cell);
+        let skinImage = null;
+        let hasSkinImage = false;
+
+        if (skinUrl) {
+            const candidateImage = getOrLoadSkin(skinUrl);
+            if (isImageRenderable(candidateImage)) {
+                skinImage = candidateImage;
+                hasSkinImage = true;
+            } else if (isImageFailed(candidateImage) && skinUrl !== DEFAULT_SKIN_URL) {
+                const fallbackImage = getOrLoadSkin(DEFAULT_SKIN_URL);
+                if (isImageRenderable(fallbackImage)) {
+                    skinImage = fallbackImage;
+                    hasSkinImage = true;
+                }
+            }
+        }
+
+        const overlayColor = getEffectiveOverlayColor(cell);
+        const strokeColor = overlayColor;
+        const fallbackFillColor = overlayColor;
+
+        if (hasSkinImage) {
             graph.save();
-            
-            // First: Draw player.png image at the bottom layer (larger)
-            graph.drawImage(playerImage,
-                cell.x - scaledRadius, cell.y - scaledRadius,
-                scaledDiameter, scaledDiameter);
-            
-            // Handle border clipping for the overlay circle
+            graph.globalAlpha = 0.5;
+            graph.fillStyle = overlayColor;
+            graph.beginPath();
+            graph.arc(cell.x, cell.y, cell.radius, 0, FULL_ANGLE);
+            graph.fill();
+            graph.globalAlpha = 1.0;
+
+            const scaledRadius = cell.radius * 2;
+            const scaledDiameter = scaledRadius * 2;
+
             if (cellTouchingBorders(cell, borders)) {
-                // Create clipping path for border-touching cells
                 let pointCount = 30 + ~~(cell.mass / 5);
                 let points = [];
                 for (let theta = 0; theta < FULL_ANGLE; theta += FULL_ANGLE / pointCount) {
                     let point = circlePoint(cell, cell.radius, theta);
                     points.push(regulatePoint(point, borders));
                 }
-                graph.beginPath();
-                graph.moveTo(points[0].x, points[0].y);
-                for (let i = 1; i < points.length; i++) {
-                    graph.lineTo(points[i].x, points[i].y);
+                if (points.length > 0) {
+                    graph.beginPath();
+                    graph.moveTo(points[0].x, points[0].y);
+                    for (let i = 1; i < points.length; i++) {
+                        graph.lineTo(points[i].x, points[i].y);
+                    }
+                    graph.closePath();
+                    graph.clip();
                 }
-                graph.closePath();
-                graph.clip();
             }
-            
-            // Second: Draw semi-transparent colored circle on top (original size)
-            graph.globalAlpha = 0.5; // 70% opacity for overlay
-            graph.fillStyle = cell.color;
-            graph.beginPath();
-            graph.arc(cell.x, cell.y, cell.radius, 0, FULL_ANGLE);
-            graph.fill();
-            
-            // Reset globalAlpha
-            graph.globalAlpha = 1.0;
-            
+
+            graph.drawImage(
+                skinImage,
+                cell.x - scaledRadius,
+                cell.y - scaledRadius,
+                scaledDiameter,
+                scaledDiameter
+            );
+
             graph.restore();
-            
-            // Draw border (always fully opaque)
-            graph.strokeStyle = cell.borderColor;
-            graph.lineWidth = 6;
+
+            graph.strokeStyle = strokeColor;
+            graph.lineWidth = 0;
             graph.beginPath();
             graph.arc(cell.x, cell.y, cell.radius, 0, FULL_ANGLE);
             graph.stroke();
         } else {
-            // Fallback to original geometric shape
-            graph.fillStyle = cell.color;
-            graph.strokeStyle = cell.borderColor;
-            graph.lineWidth = 6;
+            graph.fillStyle = fallbackFillColor;
+            graph.strokeStyle = strokeColor;
+            graph.lineWidth = 0;
             if (cellTouchingBorders(cell, borders)) {
                 drawCellWithLines(cell, borders, graph);
             } else {
                 drawRoundObject(cell, cell.radius, graph);
             }
+        }
+
+        const turretUrl = resolveTurretUrl(cell);
+        let turretImage = null;
+        if (turretUrl) {
+            const candidateTurret = getOrLoadTurret(turretUrl);
+            if (isImageRenderable(candidateTurret)) {
+                turretImage = candidateTurret;
+            } else if (isImageFailed(candidateTurret) && turretUrl !== DEFAULT_TURRET_URL) {
+                const fallbackTurret = getOrLoadTurret(DEFAULT_TURRET_URL);
+                if (isImageRenderable(fallbackTurret)) {
+                    turretImage = fallbackTurret;
+                }
+            }
+        }
+
+        if (turretImage && !imageLoader.failedToLoad) {
+            const angle = (typeof cell.angle === 'number') ? cell.angle : 0;
+
+            graph.save();
+            graph.translate(cell.x, cell.y);
+            graph.rotate(angle);
+
+            // Size and offset of the turret relative to the cell radius
+            const turretLength = cell.radius * 2;
+            const turretWidth = cell.radius * 2;
+            const offsetX = cell.radius * 1;
+
+            graph.drawImage(
+                turretImage,
+                offsetX,
+                -turretWidth / 2,
+                turretLength,
+                turretWidth
+            );
+
+            graph.restore();
         }
 
         // Draw the name of the player (always on top, fully opaque)
@@ -243,8 +417,8 @@ const drawCells = (cells, playerConfig, toggleMassState, borders, graph) => {
         graph.textAlign = 'center';
         graph.textBaseline = 'middle';
         graph.font = 'bold ' + fontSize + 'px sans-serif';
-        graph.strokeText(cell.name, cell.x, cell.y);
-        graph.fillText(cell.name, cell.x, cell.y);
+        graph.strokeText(cell.name, cell.x, cell.y - cell.radius);
+        graph.fillText(cell.name, cell.x, cell.y - cell.radius);
 
         // Draw the mass (if enabled, fully opaque)
         if (toggleMassState === 1) {

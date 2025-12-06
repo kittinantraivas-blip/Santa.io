@@ -12,6 +12,8 @@ class Food {
         this.radius = radius;
         this.mass = Math.random() + 2;
         this.hue = Math.round(Math.random() * 360);
+        // Random sprite index 1..4 to select food image on the client
+        this.spriteIndex = util.randomInRange(1, 5);
     }
 }
 

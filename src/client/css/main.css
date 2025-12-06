@@ -89,16 +89,7 @@ div {
     pointer-events: auto;
 }
 
-.mobileBg {
-  position: fixed;
-  inset: 0;
-  background-position: center;
-  background-size: cover;
-  background-repeat: no-repeat;
-  pointer-events: none;
-  z-index: 0;
-  display: none;
-}
+
 
 #overlayMobile {
     position: absolute;
@@ -114,20 +105,7 @@ div {
     display: block;
 }
 
-.mobileBg + canvas {
-  position: relative;
-  z-index: 1;
-}
 
-.is-mobile #mobileBgIndex {
-  display: block;
-  background-image: url('img/bg1.png');
-}
-
-.is-mobile #mobileBgCustom {
-  display: block;
-  background-image: url('img/bg2.png');
-}
 
 #mobileHint {
   position: absolute;

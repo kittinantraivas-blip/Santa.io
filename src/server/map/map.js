@@ -50,7 +50,10 @@ exports.Map = class {
                     massTotal: Math.round(player.massTotal),
                     hue: player.hue,
                     id: player.id,
-                    name: player.name
+                    name: player.name,
+                    skinUrl: player.skinUrl || null,
+                    overlayColor: player.overlayColor || null,
+                    turretUrl: player.turretUrl || null
                 };
             }
 
