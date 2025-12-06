@@ -2,7 +2,7 @@ const FULL_ANGLE = 2 * Math.PI;
 const imageLoader = require('./imageLoader');
 
 const DEFAULT_SKIN_URL = 'img/skins/composed/skin_1_1.png';
-const DEFAULT_OVERLAY_COLOR = '#FF7A00';
+const DEFAULT_OVERLAY_COLOR = '#ffffffff';
 const DEFAULT_TURRET_URL = 'img/turrets/direction1.png';
 const HEX_COLOR_REGEX = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
 const skinImageCache = new Map();
@@ -457,7 +457,7 @@ const drawGrid = (global, player, screen, graph) => {
     }
     
     // Draw grid lines over the background
-    graph.lineWidth = 0.1;
+    graph.lineWidth = 0;
     graph.strokeStyle = global.lineColor;
     graph.globalAlpha = 0.15;
     graph.beginPath();

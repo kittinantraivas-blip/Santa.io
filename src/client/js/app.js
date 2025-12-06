@@ -328,6 +328,20 @@ $("#split").click(function () {
     window.canvas.reenviar = false;
 });
 
+function bindMobileAction($el, command) {
+    function fire(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        socket.emit(command);
+        window.canvas.reenviar = false;
+    }
+    $el.on('click', fire);
+    $el.on('touchstart', fire);
+}
+
+bindMobileAction($("#feed"),  '1');
+bindMobileAction($("#split"), '2');
+
 function handleDisconnect() {
     socket.close();
     if (!global.kicked) { // We have a more specific error message 

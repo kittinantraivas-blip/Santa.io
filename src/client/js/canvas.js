@@ -136,6 +136,12 @@ class Canvas {
     touchInput(touch) {
         touch.preventDefault();
         touch.stopPropagation();
+
+        // เลือกเฉพาะนิ้วที่แตะอยู่บน canvas เอง
+        var t = (touch.targetTouches && touch.targetTouches[0]) ||
+            (touch.touches && touch.touches[0]);
+        if (!t) return;
+        
     	if (!this.directionLock) {
     		var rawTargetX = touch.touches[0].clientX - this.width / 2;
     		var rawTargetY = touch.touches[0].clientY - this.height / 2;
