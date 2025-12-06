@@ -7,6 +7,55 @@ var imageLoader = require('./imageLoader');
 
 var playerNameInput = document.getElementById('playerNameInput');
 var socket;
+const DEFAULT_PLAYER_SKIN = 'img/skins/composed/skin_1_1.png';
+const DEFAULT_OVERLAY_COLOR = '#FF7A00';
+const HEX_COLOR_REGEX = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
+const DEFAULT_TURRET_URL = 'img/turrets/direction1.png';
+
+function updateMobileScore(massValue) {
+    var scoreEl = document.getElementById('mobileScore');
+    if (!scoreEl) return;
+    if (!document.documentElement.classList.contains('is-mobile')) return;
+
+    var value = typeof massValue === 'number' ? Math.round(massValue) : massValue;
+    scoreEl.textContent = 'SCORE : ' + value;
+}
+
+function getSessionSkinUrl() {
+    try {
+        const stored = sessionStorage.getItem('player_skin_url');
+        if (stored && typeof stored === 'string') {
+            const trimmed = stored.trim();
+            if (trimmed && trimmed.startsWith('img/')) {
+                return trimmed;
+            }
+        }
+    } catch (e) {}
+    return DEFAULT_PLAYER_SKIN;
+}
+
+function getSessionOverlayColor() {
+    try {
+        const stored = sessionStorage.getItem('player_overlay_color');
+        if (stored && typeof stored === 'string' && HEX_COLOR_REGEX.test(stored)) {
+            return stored;
+        }
+    } catch (e) {}
+    return DEFAULT_OVERLAY_COLOR;
+}
+
+function getSessionTurretUrl() {
+    try {
+        const stored = sessionStorage.getItem('player_turret_url');
+        if (stored && typeof stored === 'string') {
+            const trimmed = stored.trim();
+            if (trimmed && trimmed.startsWith('img/')) {
+                return trimmed;
+            }
+        }
+    } catch (e) {}
+    return DEFAULT_TURRET_URL;
+}
 
 var debug = function (args) {
     if (console && console.log) {
@@ -18,9 +67,33 @@ if (/Android|webOS|iPhone|iPad|iPod|BlackBerry/i.test(navigator.userAgent)) {
     global.mobile = true;
 }
 
+document.addEventListener('touchmove', function (e) {
+    if (!e || !e.target) return;
+    var isCanvas = e.target.id === 'cvs';
+    var isOverlay = typeof e.target.closest === 'function' ? !!e.target.closest('#overlayMobile') : false;
+    if (isCanvas || isOverlay) {
+        e.preventDefault();
+    }
+}, { passive: false });
+
+document.addEventListener('gesturestart', function (e) {
+    if (e && typeof e.preventDefault === 'function') {
+        e.preventDefault();
+    }
+}, { passive: false });
+
+document.addEventListener('dblclick', function (e) {
+    if (e && typeof e.preventDefault === 'function') {
+        e.preventDefault();
+    }
+}, { passive: false });
+
 function startGame(type) {
     global.playerName = playerNameInput.value.replace(/(<([^>]+)>)/ig, '').substring(0, 25);
     global.playerType = type;
+    player.skinUrl = getSessionSkinUrl();
+    player.overlayColor = getSessionOverlayColor();
+    player.turretUrl = getSessionTurretUrl();
 
     global.screen.width = window.innerWidth;
     global.screen.height = window.innerHeight;
@@ -204,7 +277,10 @@ var player = {
     y: global.screen.height / 2,
     screenWidth: global.screen.width,
     screenHeight: global.screen.height,
-    target: { x: global.screen.width / 2, y: global.screen.height / 2 }
+    target: { x: global.screen.width / 2, y: global.screen.height / 2 },
+    skinUrl: getSessionSkinUrl(),
+    overlayColor: getSessionOverlayColor(),
+    turretUrl: getSessionTurretUrl()
 };
 global.player = player;
 
@@ -279,9 +355,17 @@ function setupSocket(socket) {
         player.screenWidth = global.screen.width;
         player.screenHeight = global.screen.height;
         player.target = window.canvas.target;
+        player.skinUrl = getSessionSkinUrl();
+        player.overlayColor = getSessionOverlayColor();
+        player.turretUrl = getSessionTurretUrl();
         global.player = player;
         window.chat.player = player;
         socket.emit('gotit', player);
+        socket.emit('playerSkinUpdate', {
+            skinUrl: player.skinUrl,
+            overlayColor: player.overlayColor,
+            turretUrl: player.turretUrl
+        });
         global.gameStart = true;
         window.chat.addSystemLine('Connected to the game!');
         window.chat.addSystemLine('Type <b>-help</b> for a list of commands.');
@@ -348,6 +432,24 @@ function setupSocket(socket) {
             player.hue = playerData.hue;
             player.massTotal = playerData.massTotal;
             player.cells = playerData.cells;
+            if (playerData.skinUrl && typeof playerData.skinUrl === 'string') {
+                player.skinUrl = playerData.skinUrl;
+            } else if (!player.skinUrl) {
+                player.skinUrl = getSessionSkinUrl();
+            }
+            if (playerData.overlayColor && typeof playerData.overlayColor === 'string') {
+                player.overlayColor = playerData.overlayColor;
+            } else if (!player.overlayColor || !HEX_COLOR_REGEX.test(player.overlayColor)) {
+                player.overlayColor = getSessionOverlayColor();
+            }
+            if (playerData.turretUrl && typeof playerData.turretUrl === 'string') {
+                const trimmedTurret = playerData.turretUrl.trim();
+                if (trimmedTurret && trimmedTurret.startsWith('img/')) {
+                    player.turretUrl = trimmedTurret;
+                }
+            } else if (!player.turretUrl) {
+                player.turretUrl = getSessionTurretUrl();
+            }
         }
         users = userData;
         foods = foodsList;
@@ -497,10 +599,17 @@ function gameLoop() {
 
         var cellsToDraw = [];
         for (var i = 0; i < users.length; i++) {
-            let color = 'hsl(' + users[i].hue + ', 100%, 50%)';
-            let borderColor = 'hsl(' + users[i].hue + ', 100%, 45%)';
-            for (var j = 0; j < users[i].cells.length; j++) {
-                const cell = users[i].cells[j];
+            const netPlayer = users[i];
+            let color = 'hsl(' + netPlayer.hue + ', 100%, 50%)';
+            let borderColor = 'hsl(' + netPlayer.hue + ', 100%, 45%)';
+            const hasId = netPlayer.id !== undefined && netPlayer.id !== null;
+            const isMine = hasId ? (netPlayer.id === player.id) : (netPlayer.name === player.name);
+            const playerSkinUrl = (netPlayer.skinUrl && typeof netPlayer.skinUrl === 'string' && netPlayer.skinUrl.trim()) ? netPlayer.skinUrl.trim() : null;
+            const playerOverlayColor = (netPlayer.overlayColor && typeof netPlayer.overlayColor === 'string' && HEX_COLOR_REGEX.test(netPlayer.overlayColor)) ? netPlayer.overlayColor : null;
+            const rawTurret = (netPlayer.turretUrl && typeof netPlayer.turretUrl === 'string') ? netPlayer.turretUrl.trim() : '';
+            const playerTurretUrl = (rawTurret && rawTurret.startsWith('img/')) ? rawTurret : null;
+            for (var j = 0; j < netPlayer.cells.length; j++) {
+                const cell = netPlayer.cells[j];
                 // Only add visible cells for performance
                 if (cell.x >= visibleBounds.left && cell.x <= visibleBounds.right &&
                     cell.y >= visibleBounds.top && cell.y <= visibleBounds.bottom) {
@@ -508,10 +617,15 @@ function gameLoop() {
                         color: color,
                         borderColor: borderColor,
                         mass: cell.mass,
-                        name: users[i].name,
+                        name: netPlayer.name,
                         radius: cell.radius,
                         x: cell.x - player.x + global.screen.width / 2,
-                        y: cell.y - player.y + global.screen.height / 2
+                        y: cell.y - player.y + global.screen.height / 2,
+                        angle: (typeof cell.angle === 'number') ? cell.angle : 0,
+                        isLocal: isMine,
+                        skinUrl: playerSkinUrl,
+                        overlayColor: playerOverlayColor,
+                        turretUrl: playerTurretUrl
                     });
                 }
             }
@@ -521,6 +635,16 @@ function gameLoop() {
         });
         render.drawCells(cellsToDraw, playerConfig, global.toggleMassState, borders, graph);
 
+        var totalMass = 0;
+        if (typeof player.massTotal === 'number') {
+            totalMass = player.massTotal;
+        } else if (player && player.cells && player.cells.length) {
+            for (var idx = 0; idx < player.cells.length; idx++) {
+                totalMass += player.cells[idx].mass || 0;
+            }
+        }
+        updateMobileScore(totalMass);
+
         socket.emit('0', window.canvas.target); // playerSendTarget "Heartbeat".
         
         // Display FPS counter if performance is below target (for debugging)
@@ -529,6 +653,9 @@ function gameLoop() {
             graph.font = '12px monospace';
             graph.fillText(`FPS: ${Math.round(global.performance.averageFPS)}`, 10, 20);
         }
+    }
+    else {
+        updateMobileScore(0);
     }
 }
 

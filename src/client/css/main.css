@@ -1,5 +1,5 @@
 * {
-    font-family: sans-serif;
+    font-family: 'Bungee Shade', sans-serif;
     font-size: 14px;
 }
 
@@ -18,15 +18,21 @@ html, body, canvas {
 }
 
 div {
-    -webkit-user-select: none; /* webkit (safari, chrome) browsers */
-    -moz-user-select: none; /* mozilla browsers */
-    -khtml-user-select: none; /* webkit (konqueror) browsers */
-    -ms-user-select: none; /* IE10+ */
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -khtml-user-select: none;
+  -ms-user-select: none;
+  user-select: none; /* เพิ่มบรรทัดมาตรฐาน */
+}
+
+/* อนุญาตให้พิมพ์/เลือกข้อความในช่องแชทตามปกติ */
+.chatbox .chat-input {
+  user-select: text;
 }
 
 #split {
     position: absolute;
-    bottom: 10px;
+    bottom: 50px;
     left: 10px;
     width: 100px;
     height: 100px;
@@ -36,7 +42,7 @@ div {
 
 #feed {
     position: absolute;
-    bottom: 10px;
+    bottom: 50px;
     right: 10px;
     width: 100px;
     height: 100px;
@@ -54,6 +60,7 @@ div {
     right: 10px;
     font-weight: bold;
     text-align: center;
+    z-index: 20;
 }
 
 #status .title {
@@ -63,6 +70,105 @@ div {
 #status .me {
     color: #FF8888;
     font-size: 16.1px;
+}
+
+#cvs {
+    outline: none;
+    touch-action: none;
+}
+
+#mobile {
+    position: absolute;
+    inset: 0;
+    z-index: 20;
+    pointer-events: none;
+}
+
+#mobile .split,
+#mobile .feed {
+    pointer-events: auto;
+}
+
+.mobileBg {
+  position: fixed;
+  inset: 0;
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+  pointer-events: none;
+  z-index: 0;
+  display: none;
+}
+
+#overlayMobile {
+    position: absolute;
+    inset: 0;
+    background: url('../img/overlay-mobile.png') center/cover no-repeat;
+    pointer-events: none;
+    z-index: 10;
+    display: none;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+
+.is-mobile #overlayMobile {
+    display: block;
+}
+
+.mobileBg + canvas {
+  position: relative;
+  z-index: 1;
+}
+
+.is-mobile #mobileBgIndex {
+  display: block;
+  background-image: url('img/bg1.png');
+}
+
+.is-mobile #mobileBgCustom {
+  display: block;
+  background-image: url('img/bg2.png');
+}
+
+#mobileHint {
+  position: absolute;
+  top: 14vh;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: clamp(18px, 3.5vw, 26px);
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 0 2px 6px rgba(0,0,0,.6);
+  white-space: nowrap;
+  z-index: 20;
+  pointer-events: none;
+  display: none;
+}
+
+#mobileScore {
+  position: absolute;
+  top: calc(14vh + 2.4rem);
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: clamp(16px, 3.2vw, 24px);
+  font-weight: 600;
+  color: #fff;
+  text-shadow: 0 2px 6px rgba(0,0,0,.6);
+  white-space: nowrap;
+  z-index: 20;
+  pointer-events: none;
+  display: none;
+}
+
+.is-mobile #mobileHint {
+  display: block;
+}
+
+.is-mobile #mobileScore {
+  display: block;
+}
+
+.is-mobile #spectateButton {
+  display: none !important;
 }
 
 .chatbox {
@@ -182,6 +288,37 @@ div {
 
 #spectateButton:active, #spectateButton:hover,
 #startButton:active, #startButton:hover {
+    top: 1px;
+    background: #55D88B;
+    outline: none;
+    -webkit-box-shadow: none;
+    box-shadow: none;
+}
+
+#customizeButton {
+    position: relative;
+    margin: auto;
+    margin-top: 10px;
+    width: 100%;
+    height: 40px;
+    box-sizing: border-box;
+    font-size: large;
+    color: white;
+    text-align: center;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+    background: #2ecc71;
+    border: 0;
+    border-bottom: 2px solid #28be68;
+    cursor: pointer;
+    -webkit-box-shadow: inset 0 -2px #28be68;
+    box-shadow: inset 0 -2px #28be68;
+    border-radius: 5px;
+    -moz-border-radius: 5px;
+    -webkit-border-radius: 5px;
+    margin-bottom: 10px;
+}
+
+#customizeButton:active, #customSkinButton:hover {
     top: 1px;
     background: #55D88B;
     outline: none;

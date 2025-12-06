@@ -3,8 +3,8 @@
 <head>
     <!-- Meta Properties -->
     <meta charset="UTF-8">
-    <title>Krathong.io</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no">
+    <title>RegiftedSantaMission</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
     <!-- CSS -->
     <link rel="stylesheet" href="css/main.css" />
     <!-- Audio -->
@@ -22,19 +22,30 @@
            <input type="image" id="split" class="split" src="img/split.png" alt="splitBtn">
            <input type="image" id="feed" class="feed" src="img/feed.png" alt="feedBtn">
         </div>
+        <div id="mobileBgIndex" class="mobileBg"></div>
         <canvas tabindex="1" id="cvs"></canvas>
+        <div id="overlayMobile" aria-hidden="true"></div>
+        <div id="mobileHint" role="note">Drag to move, double tap to split.</div>
+        <div id="mobileScore" role="status" aria-live="polite"></div>
     </div>
     <div id="startMenuWrapper">
         <div id="startMenu">
-<<<<<<< HEAD
-            <p>Krathong</p>
-=======
-            <p>Krathong.io</p>
->>>>>>> 2d01b2e112ab47d5e98b285ee0c4e452fd6fb7d0
+            <p>Regifted Santa Mission</p>
             <input type="text" tabindex="0" autofocus placeholder="Enter your name here" id="playerNameInput" maxlength="25" />
             <b class="input-error">Nick must be alphanumeric characters only!</b>
             <br />
             <a onclick="document.getElementById('spawn_cell').play();"><button id="startButton">Play</button></a>
+            <button id="customizeButton" class="btn">Customize Skin</button>
+            <script>
+              (function(){
+                var btn = document.getElementById('customizeButton');
+                if (btn) {
+                  btn.addEventListener('click', function(){
+                    window.location.href = 'customskin.html';
+                  });
+                }
+              })();
+            </script>
             <button id="spectateButton">Spectate</button>
             <button id="settingsButton">Settings</button>
             <br />
@@ -64,5 +75,30 @@
     <!-- JS -->
     <script src="//code.jquery.com/jquery-2.2.0.min.js"></script>
     <script src="js/app.js"></script>
+    <script>
+        (function() {
+            var coarseQuery = window.matchMedia('(hover: none) and (pointer: coarse)');
+            var mobileRegex = /Android|iPhone|iPad|iPod/i;
+
+            function applyMobileClass(e) {
+                var isMobile = (e && e.matches) || mobileRegex.test(navigator.userAgent);
+                document.documentElement.classList.toggle('is-mobile', isMobile);
+            }
+
+            applyMobileClass(coarseQuery);
+            if (coarseQuery.addEventListener) {
+                coarseQuery.addEventListener('change', applyMobileClass);
+            } else if (coarseQuery.addListener) {
+                coarseQuery.addListener(applyMobileClass);
+            }
+
+            window.addEventListener('orientationchange', function() {
+                applyMobileClass(coarseQuery);
+            });
+            document.addEventListener('visibilitychange', function() {
+                applyMobileClass(coarseQuery);
+            });
+        })();
+    </script>
 </body>
 </html>

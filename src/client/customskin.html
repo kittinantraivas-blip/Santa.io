@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Krathong.io - Custom Skin</title>
+  <link rel="stylesheet" href="css/main.css">
+  <style>
+    :root{ --bg-a:#ffffff; --accent:#06b253; --accent-dark:#039f47; --muted:#f5f5f5; --panel:#ffffff; }
+    html,body{height:100%;}
+    body{
+      margin:0;padding:24px 18px;font-family:Inter, 'Helvetica Neue', Arial, sans-serif;display:flex;flex-direction:column;align-items:center;gap:14px;background:var(--bg-a);
+      -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;color:#222
+    }
+
+    /* Top controls */
+    #topBar{ width:100%; max-width:420px; display:flex; align-items:center; justify-content:space-between; }
+    .pillBtn{ background:var(--accent); color:#fff; padding:14px 22px; border-radius:12px; font-size:20px; border:none; box-shadow:0 6px 18px rgba(3,159,71,0.18); cursor:pointer }
+
+    /* preview area */
+    #previewWrap{ width:100%; max-width:520px; border-radius:18px; display:flex; align-items:center; justify-content:center; position:relative; padding:16px; box-shadow:0 18px 40px rgba(0,0,0,0.12); background:var(--panel) }
+    #previewWrapper{ display:flex; flex-direction:row; justify-content:center; align-items:center; gap:16px }
+    #turretPreviewCanvas,
+    #playerPreviewCanvas{ width:180px; height:180px; border-radius:50%; background:transparent; border:6px solid #000; box-shadow:0 10px 30px rgba(0,0,0,0.12) }
+
+    /* speech bubble */
+    .speech{ position:absolute; right:-70px; top:-90px; transform:translateX(0); background:#fff; border:6px solid #000; border-radius:18px; padding:12px 18px; font-size:22px; line-height:1.05; white-space:nowrap }
+    .speech:after{ content:''; position:absolute; left:8px; bottom:-18px; width:0;height:0;border-left:10px solid transparent;border-right:10px solid transparent;border-top:18px solid #000 }
+    .speech span{ display:block; color:#000 }
+
+    /* description box */
+    #descriptionBox{ width:90%; max-width:420px; min-height:56px; background:#fff; border-radius:12px; border:2px solid #000; display:flex;align-items:center;justify-content:center;font-weight:700;color:#666;font-size:18px; text-align:center; padding:8px 12px; box-shadow:0 6px 20px rgba(0,0,0,0.06) }
+
+    /* selection panel */
+    #selectionPanel{ width:90%; max-width:420px; background:#fff; border-radius:18px; padding:12px; border:2px solid #000; box-shadow:0 8px 26px rgba(0,0,0,0.06); }
+    .panelHeader{ display:flex; align-items:center; justify-content:space-between; padding:6px 6px }
+    .arrow{ width:40px; height:40px; border-radius:12px; border:2px solid #000; display:flex; align-items:center; justify-content:center; font-size:22px; cursor:pointer; background:transparent }
+    .scrollPill{ height:18px; width:120px; background:#666; border-radius:12px }
+
+    .selectorRow{ display:flex; gap:12px; padding:10px 6px; overflow-x:auto; -webkit-overflow-scrolling:touch }
+    .selectorRow::-webkit-scrollbar{ display:none }
+
+    /* face items are circular icons */
+    .faceItem{ width:72px; height:72px; min-width:72px; border-radius:50%; border:3px solid transparent; display:flex;align-items:center;justify-content:center;cursor:pointer; background:#fff; box-shadow:0 6px 12px rgba(0,0,0,0.06) }
+    .faceItem.selected{ transform:scale(1.02); border-color:#000 }
+
+    /* pattern items are circular with thick black stroke when selected */
+    .patternItem{ width:72px; height:72px; min-width:72px; border-radius:50%; border:4px solid transparent; display:flex;align-items:center;justify-content:center;cursor:pointer;background:#fff }
+    .patternItem.selected{ border-color:#000 }
+
+    /* turret items */
+    .turretItem{ width:90px; height:90px; min-width:90px; border-radius:18px; border:4px solid transparent; display:flex;align-items:center;justify-content:center;cursor:pointer; background:#fff; box-shadow:0 6px 12px rgba(0,0,0,0.06); transition:transform 0.15s ease }
+    .turretItem img{ width:80px; height:80px; object-fit:contain }
+    .turretItem.active{ border-color:#000; transform:scale(1.03) }
+
+    /* confirm button centered */
+    #confirmWrap{ width:100%; display:flex; justify-content:center; margin-top:8px }
+    #confirmBtn{ background:var(--accent); color:#fff; padding:18px 56px; font-size:28px; border-radius:14px; border:none; box-shadow:0 10px 30px rgba(3,159,71,0.16); cursor:pointer }
+
+    @media(max-width:520px){
+      #previewWrapper{ flex-direction:column }
+      #turretPreviewCanvas,
+      #playerPreviewCanvas{ width:160px; height:160px }
+    }
+  </style>
+</head>
+<body>
+  <div id="topBar">
+    <button id="goBackBtn" class="pillBtn">go back<br>to play</button>
+    <div style="width:60px; height:1px"></div>
+  </div>
+
+  <div id="previewWrap">
+    <div id="previewWrapper">
+      <canvas id="turretPreviewCanvas" width="180" height="180" aria-label="Turret preview"></canvas>
+      <canvas id="playerPreviewCanvas" width="220" height="220" aria-label="Krathong preview"></canvas>
+    </div>
+    <div class="speech"><span>select your</span><span>krathong</span></div>
+  </div>
+
+  <div id="descriptionBox">เลือกหน้ากาก (Face) + ลาย (Pattern) + สี (Color) แล้วกด Confirm เพื่อบันทึก</div>
+
+  <div id="selectionPanel">
+    <div class="panelHeader">
+      <div class="arrow" id="leftArrow">◀</div>
+      <div class="scrollPill"></div>
+      <div class="arrow" id="rightArrow">▶</div>
+    </div>
+
+    <div class="selectorRow" id="faceRow"></div>
+    <div class="selectorRow" id="patternRow"></div>
+    <div class="selectorRow" id="turretRow">
+      <div class="turretItem" data-turret="img/turrets/direction1.png">
+        <img src="img/turrets/direction1.png" alt="Turret 1">
+      </div>
+      <div class="turretItem" data-turret="img/turrets/direction2.png">
+        <img src="img/turrets/direction2.png" alt="Turret 2">
+      </div>
+      <div class="turretItem" data-turret="img/turrets/direction3.png">
+        <img src="img/turrets/direction3.png" alt="Turret 3">
+      </div>
+      <div class="turretItem" data-turret="img/turrets/direction4.png">
+        <img src="img/turrets/direction4.png" alt="Turret 4">
+      </div>
+      <div class="turretItem" data-turret="img/turrets/direction5.png">
+        <img src="img/turrets/direction5.png" alt="Turret 5">
+      </div>
+    </div>
+  </div>
+
+  <div id="confirmWrap">
+    <button id="confirmBtn">confirm</button>
+  </div>
+
+  
+<script>
+  // --- CONFIG: asset paths ---
+  const ASSET_BASE = 'img/skins';
+  const COMPOSED_PATH = (f,p)=>`${ASSET_BASE}/composed/skin_${f}_${p}.png`;
+  const DEFAULT_TURRET_URL = 'img/turrets/direction1.png';
+
+  const PATTERN_DESC = {
+    1: 'Pattern 1 — ลายพื้นฐาน (default)',
+    2: 'Pattern 2 — โมเสกสี่เหลี่ยม',
+    3: 'Pattern 3 — วงแหวนซ้อน',
+    4: 'Pattern 4 — เส้นเฉียงซ้ำ',
+    5: 'Pattern 5 — จุดโปรย'
+  };
+
+  // --- DOM refs ---
+  const faceRow = document.getElementById('faceRow');
+  const patternRow = document.getElementById('patternRow');
+  const turretRow = document.getElementById('turretRow');
+  const playerPreviewCanvas = document.getElementById('playerPreviewCanvas');
+  const playerCtx = playerPreviewCanvas.getContext('2d');
+  const turretPreviewCanvas = document.getElementById('turretPreviewCanvas');
+  const turretCtx = turretPreviewCanvas.getContext('2d');
+  const descriptionBox = document.getElementById('descriptionBox');
+  const confirmBtn = document.getElementById('confirmBtn');
+  const goBackBtn = document.getElementById('goBackBtn');
+
+  // --- state (default: face1 + pattern1 + default turret) ---
+  let selected = { face: 1, pattern: 1 };
+  let selectedTurretUrl = DEFAULT_TURRET_URL;
+
+  // restore previous selection if exists
+  (function restoreFromSession(){
+    try{
+      const saved = JSON.parse(sessionStorage.getItem('krathong_skin')||'null');
+      if(saved && saved.face && saved.pattern){
+        selected.face = +saved.face;
+        selected.pattern = +saved.pattern;
+      }
+    }catch(e){}
+    try{
+      const storedTurret = sessionStorage.getItem('player_turret_url');
+      if(storedTurret && typeof storedTurret === 'string'){
+        const trimmed = storedTurret.trim();
+        if(trimmed && trimmed.startsWith('img/')){
+          selectedTurretUrl = trimmed;
+        }
+      }
+    }catch(e){}
+  })();
+
+  // --- build UI items ---
+  function makeFaceItems(){
+    faceRow.innerHTML='';
+    for(let f=1; f<=5; f++){
+      const el=document.createElement('div');
+      el.className='faceItem';
+      el.dataset.value=f;
+      el.title='Face '+f;
+
+      const img=new Image();
+      img.src = COMPOSED_PATH(f, 1);
+      img.alt = `Face ${f}`;
+      img.style.width='64px'; img.style.height='64px'; img.style.borderRadius='50%';
+      el.appendChild(img);
+
+      el.addEventListener('click', ()=>{
+        [...faceRow.children].forEach(c=>c.classList.remove('selected'));
+        el.classList.add('selected');
+        selected.face=f;
+        updatePlayerPreview();
+      });
+
+      faceRow.appendChild(el);
+    }
+  }
+
+  function makePatternItems(){
+    patternRow.innerHTML='';
+    for(let p=1; p<=5; p++){
+      const el=document.createElement('div');
+      el.className='patternItem';
+      el.dataset.value=p;
+      el.title='Pattern '+p;
+
+      const img=new Image();
+      img.src = COMPOSED_PATH(1, p);
+      img.alt = `Pattern ${p}`;
+      img.style.width='64px'; img.style.height='64px'; img.style.borderRadius='50%';
+      el.appendChild(img);
+
+      el.addEventListener('click', ()=>{
+        [...patternRow.children].forEach(c=>c.classList.remove('selected'));
+        el.classList.add('selected');
+        selected.pattern=p;
+        descriptionBox.textContent = PATTERN_DESC[p] || 'Pattern';
+        updatePlayerPreview();
+      });
+
+      patternRow.appendChild(el);
+    }
+  }
+
+  makeFaceItems();
+  makePatternItems();
+
+  function applySelectedUI(){
+    const faceIdx = selected.face-1;
+    if(faceRow.children[faceIdx]) faceRow.children[faceIdx].classList.add('selected');
+    const patIdx = selected.pattern-1;
+    if(patternRow.children[patIdx]) patternRow.children[patIdx].classList.add('selected');
+    descriptionBox.textContent = PATTERN_DESC[selected.pattern] || 'Pattern';
+  }
+  applySelectedUI();
+
+  // --- turret selection ---
+  function setActiveTurretItem(url){
+    const items = document.querySelectorAll('.turretItem');
+    items.forEach(item=>{
+      const value = item.getAttribute('data-turret');
+      item.classList.toggle('active', value === url);
+    });
+  }
+
+  function bindTurretItems(){
+    const items = document.querySelectorAll('.turretItem');
+    items.forEach(item=>{
+      item.addEventListener('click', ()=>{
+        const url = item.getAttribute('data-turret');
+        if(url && url.startsWith('img/')){
+          selectedTurretUrl = url;
+          setActiveTurretItem(selectedTurretUrl);
+          updateTurretPreview(selectedTurretUrl);
+        }
+      });
+    });
+    setActiveTurretItem(selectedTurretUrl);
+    updateTurretPreview(selectedTurretUrl);
+  }
+  bindTurretItems();
+
+  // --- preview drawing ---
+  function clearCanvas(ctx, canvas){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    ctx.fillStyle='#f7f7f7';
+    ctx.beginPath();
+    ctx.arc(canvas.width/2, canvas.height/2, canvas.width/2 - 8, 0, Math.PI*2);
+    ctx.fill();
+  }
+
+  function updatePlayerPreview(){
+    const composedPath = COMPOSED_PATH(selected.face, selected.pattern);
+    const img = new Image();
+    img.onload = ()=>{
+      clearCanvas(playerCtx, playerPreviewCanvas);
+      const size = Math.min(playerPreviewCanvas.width, playerPreviewCanvas.height) - 16;
+      playerCtx.save();
+      playerCtx.beginPath();
+      playerCtx.arc(playerPreviewCanvas.width/2, playerPreviewCanvas.height/2, size/2, 0, Math.PI*2);
+      playerCtx.closePath();
+      playerCtx.clip();
+      playerCtx.drawImage(
+        img,
+        (playerPreviewCanvas.width - size)/2,
+        (playerPreviewCanvas.height - size)/2,
+        size,
+        size
+      );
+      playerCtx.restore();
+    };
+    img.onerror = ()=>{
+      clearCanvas(playerCtx, playerPreviewCanvas);
+      playerCtx.fillStyle='#999';
+      playerCtx.textAlign='center';
+      playerCtx.font='14px sans-serif';
+      playerCtx.fillText('ไม่พบไฟล์: '+composedPath, playerPreviewCanvas.width/2, playerPreviewCanvas.height/2);
+    };
+    img.src = composedPath;
+  }
+
+  function updateTurretPreview(url){
+    const img = new Image();
+    img.onload = ()=>{
+      clearCanvas(turretCtx, turretPreviewCanvas);
+      turretCtx.save();
+      turretCtx.translate(turretPreviewCanvas.width/2, turretPreviewCanvas.height/2);
+      turretCtx.rotate(-Math.PI/4);
+      const length = turretPreviewCanvas.width * 0.7;
+      const height = turretPreviewCanvas.height * 0.4;
+      turretCtx.drawImage(img, 0, -height/2, length, height);
+      turretCtx.restore();
+    };
+    img.onerror = ()=>{
+      clearCanvas(turretCtx, turretPreviewCanvas);
+      turretCtx.fillStyle='#999';
+      turretCtx.textAlign='center';
+      turretCtx.font='12px sans-serif';
+      turretCtx.fillText('ไม่พบป้อม', turretPreviewCanvas.width/2, turretPreviewCanvas.height/2);
+    };
+    img.src = url || DEFAULT_TURRET_URL;
+  }
+
+  // initial preview
+  updatePlayerPreview();
+
+  // --- confirm/save ---
+  confirmBtn.addEventListener('click', ()=>{
+    const composedPath = COMPOSED_PATH(selected.face, selected.pattern);
+
+    const payload = {
+      face: selected.face,
+      pattern: selected.pattern,
+      turretUrl: selectedTurretUrl,
+      composedPath
+    };
+
+    sessionStorage.setItem('player_skin_url', composedPath);
+    sessionStorage.setItem('player_turret_url', selectedTurretUrl);
+    sessionStorage.setItem('krathong_skin', JSON.stringify(payload));
+
+    descriptionBox.textContent = 'บันทึกแล้ว — พร้อมเล่น! (กลับสู่หน้าหลักเพื่อกด Play)';
+    setTimeout(()=>{ window.location.href = 'index.html'; }, 350);
+  });
+
+  // --- nav back ---
+  goBackBtn.addEventListener('click', ()=>{
+    window.location.href = 'index.html';
+  });
+
+  // --- arrow scrolling convenience ---
+  document.getElementById('leftArrow').addEventListener('click', ()=>{
+    faceRow.scrollBy({ left:-120, behavior:'smooth' });
+    patternRow.scrollBy({ left:-120, behavior:'smooth' });
+    turretRow.scrollBy({ left:-120, behavior:'smooth' });
+  });
+  document.getElementById('rightArrow').addEventListener('click', ()=>{
+    faceRow.scrollBy({ left:120, behavior:'smooth' });
+    patternRow.scrollBy({ left:120, behavior:'smooth' });
+    turretRow.scrollBy({ left:120, behavior:'smooth' });
+  });
+  </script>
+  <script>
+    (function() {
+      var coarseQuery = window.matchMedia('(hover: none) and (pointer: coarse)');
+      var mobileRegex = /Android|iPhone|iPad|iPod/i;
+
+      function applyMobileClass(e) {
+        var isMobile = (e && e.matches) || mobileRegex.test(navigator.userAgent);
+        document.documentElement.classList.toggle('is-mobile', isMobile);
+      }
+
+      applyMobileClass(coarseQuery);
+      if (coarseQuery.addEventListener) {
+        coarseQuery.addEventListener('change', applyMobileClass);
+      } else if (coarseQuery.addListener) {
+        coarseQuery.addListener(applyMobileClass);
+      }
+
+      window.addEventListener('orientationchange', function() {
+        applyMobileClass(coarseQuery);
+      });
+      document.addEventListener('visibilitychange', function() {
+        applyMobileClass(coarseQuery);
+      });
+    })();
+  </script>
+</body>
+</html>
