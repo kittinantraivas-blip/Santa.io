@@ -2,7 +2,7 @@ const FULL_ANGLE = 2 * Math.PI;
 const imageLoader = require('./imageLoader');
 
 const DEFAULT_SKIN_URL = 'img/skins/composed/skin_1_1.png';
-const DEFAULT_OVERLAY_COLOR = '#ffffffff';
+const DEFAULT_OVERLAY_COLOR = '#FF7A00';
 const DEFAULT_TURRET_URL = 'img/turrets/direction1.png';
 const HEX_COLOR_REGEX = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
 const skinImageCache = new Map();
@@ -148,7 +148,7 @@ const drawFood = (position, food, graph) => {
 
         // Second: Draw food.png image on the top layer
         graph.drawImage(foodImage, 
-            position.x - food.radius * 4.25, position.y - food.radius * 5.25,
+            position.x - food.radius * 4.25, position.y - food.radius * 4,
             diameter, diameter);
 
         
@@ -344,6 +344,12 @@ const drawCells = (cells, playerConfig, toggleMassState, borders, graph) => {
                 }
             }
 
+            graph.strokeStyle = strokeColor;
+            graph.lineWidth = 0;
+            graph.beginPath();
+            graph.arc(cell.x, cell.y, cell.radius, 0, FULL_ANGLE);
+            graph.stroke();
+
             graph.drawImage(
                 skinImage,
                 cell.x - scaledRadius,
@@ -354,11 +360,6 @@ const drawCells = (cells, playerConfig, toggleMassState, borders, graph) => {
 
             graph.restore();
 
-            graph.strokeStyle = strokeColor;
-            graph.lineWidth = 0;
-            graph.beginPath();
-            graph.arc(cell.x, cell.y, cell.radius, 0, FULL_ANGLE);
-            graph.stroke();
         } else {
             graph.fillStyle = fallbackFillColor;
             graph.strokeStyle = strokeColor;
@@ -392,9 +393,9 @@ const drawCells = (cells, playerConfig, toggleMassState, borders, graph) => {
             graph.rotate(angle);
 
             // Size and offset of the turret relative to the cell radius
-            const turretLength = cell.radius * 2;
+            const turretLength = cell.radius * 3.5;
             const turretWidth = cell.radius * 2;
-            const offsetX = cell.radius * 1;
+            const offsetX = cell.radius * 1.5;
 
             graph.drawImage(
                 turretImage,
@@ -438,7 +439,7 @@ const drawGrid = (global, player, screen, graph) => {
         // Draw tiled background with proper parallax scrolling
         graph.save();
         
-        const tileSize = 200; // Size of each background tile
+        const tileSize = 400; // Size of each background tile
         
         // Calculate offset for parallax effect (opposite movement)
         const offsetX = (-player.x) % tileSize;
@@ -459,7 +460,7 @@ const drawGrid = (global, player, screen, graph) => {
     // Draw grid lines over the background
     graph.lineWidth = 0;
     graph.strokeStyle = global.lineColor;
-    graph.globalAlpha = 0.15;
+    graph.globalAlpha = 0;
     graph.beginPath();
 
     for (let x = -player.x; x < screen.width; x += screen.height / 18) {

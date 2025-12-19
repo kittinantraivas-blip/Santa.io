@@ -54,6 +54,17 @@ module.exports = {
         targetFPS: 60,
         lastFrameTime: 0,
         frameCount: 0,
-        averageFPS: 0
+        averageFPS: 0,
+        lastFrameDelta: 0,
+        avgFrameDelta: 0,
+        instantFPS: 0,
+        rollingFPS: 0,
+        rollingWindow: 60,
+        deltas: [],
+        deltasSum: 0,
+        hud: {
+            enabled: true,
+            showAlways: false
+        }
     }
 };

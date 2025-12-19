@@ -7,11 +7,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
     <!-- CSS -->
     <link rel="stylesheet" href="css/main.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Bungee&display=swap" rel="stylesheet">
     <!-- Audio -->
     <audio id="split_cell" src="audio/split.mp3"></audio>
     <audio id="spawn_cell" src="audio/spawn.mp3"></audio>
 </head>
-<body style="background: url('img/bg1.png'); background-position: center center; background-repeat: no-repeat; background-size: cover; height: 100vh; width: 100%;">
+<body style="background: url('img/bg1.png'); background-position: center center; background-repeat: no-repeat; background-size: cover; height: 110vh; width: 100%;">
     <div id="gameAreaWrapper">
         <div id="status"><span class="title">Leaderboard</span></div>
         <div class="chatbox" id="chatbox">
@@ -23,11 +24,15 @@
            <input type="image" id="feed" class="feed" src="img/feed.png" alt="feedBtn">
         </div>
         <canvas tabindex="1" id="cvs"></canvas>
-        <div id="overlayMobile" aria-hidden="true"></div>
-        <div id="mobileHint" role="note">Drag to move, double tap to split.</div>
+        <div id="overlayMobile" aria-hidden="true">
+            <canvas id="dirJoy" aria-hidden="true"></canvas>
+        </div>
         <div id="mobileScore" role="status" aria-live="polite"></div>
-    </div>
+    </div>rf
     <div id="startMenuWrapper">
+        <a href="https://www.aahhtechlab.com/">
+            <img src="img/logo101.png" alt="Company Logo" width="50" height="50" id="CompanyLogo">
+        </a>
         <div id="startMenu">
             <p>Regifted Santa Mission</p>
             <input type="text" tabindex="0" autofocus placeholder="Enter your name here" id="playerNameInput" maxlength="25" />
@@ -46,6 +51,16 @@
               })();
             </script>
             <button id="spectateButton">Spectate</button>
+            <script>
+              (function(){
+                var btn = document.getElementById('spectateButton');
+                if (btn) {
+                  btn.addEventListener('click', function(){
+                  document.getElementById("CompanyLogo").style.visibility = "hidden"
+                  });
+                }
+              })();
+            </script>
             <button id="settingsButton">Settings</button>
             <br />
             <div id="settings">

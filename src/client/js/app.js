@@ -4,6 +4,7 @@ var ChatClient = require('./chat-client');
 var Canvas = require('./canvas');
 var global = require('./global');
 var imageLoader = require('./imageLoader');
+var DirectionJoystick = require('./directionJoystick');
 
 var playerNameInput = document.getElementById('playerNameInput');
 var socket;
@@ -12,12 +13,26 @@ const DEFAULT_OVERLAY_COLOR = '#FF7A00';
 const HEX_COLOR_REGEX = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
 const DEFAULT_TURRET_URL = 'img/turrets/direction1.png';
 
+// Throttle configs
+const JOY_FPS = 30;
+const JOY_INTERVAL_MS = 1000 / JOY_FPS;
+const SCORE_INTERVAL_MS = 120;
+
+let _lastJoyUpdate = 0;
+let _lastScoreUpdate = 0;
+let _lastScoreValue = null;
+
+let _lastJoyNX = 0;
+let _lastJoyNY = 0;
+
 function updateMobileScore(massValue) {
     var scoreEl = document.getElementById('mobileScore');
     if (!scoreEl) return;
     if (!document.documentElement.classList.contains('is-mobile')) return;
 
     var value = typeof massValue === 'number' ? Math.round(massValue) : massValue;
+    if (_lastScoreValue === value) return;
+    _lastScoreValue = value;
     scoreEl.textContent = 'SCORE : ' + value;
 }
 
@@ -89,6 +104,7 @@ document.addEventListener('dblclick', function (e) {
 }, { passive: false });
 
 function startGame(type) {
+    document.documentElement.classList.toggle('spectate-mode', type === 'spectator');
     global.playerName = playerNameInput.value.replace(/(<([^>]+)>)/ig, '').substring(0, 25);
     global.playerType = type;
     player.skinUrl = getSessionSkinUrl();
@@ -294,6 +310,36 @@ global.target = target;
 
 window.canvas = new Canvas();
 window.chat = new ChatClient();
+
+var dirJoy = null;
+var dirJoyCanvas = document.getElementById('dirJoy');
+
+function isMobileUI() {
+    return document.documentElement.classList.contains('is-mobile');
+}
+
+// overlay-mobile.png ถูกออกแบบ 1080x1920 และรู 300px ตรงกลาง
+function computeJoySizePx() {
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const scale = Math.max(vw / 1080, vh / 1920); // cover scaling
+    return 300 * scale; // เส้นผ่านศูนย์กลางรู
+}
+
+function resizeDirJoy() {
+    if (!dirJoy || !dirJoyCanvas) return;
+    const size = computeJoySizePx();
+    // ตั้ง CSS var ให้สอดคล้องด้วย
+    dirJoyCanvas.style.setProperty('--joySize', Math.round(size) + 'px');
+    dirJoy.resizeCssPx(size);
+}
+
+if (dirJoyCanvas) {
+    dirJoy = new DirectionJoystick(dirJoyCanvas, { deadzone: 0.10 });
+    resizeDirJoy();
+    window.addEventListener('resize', resizeDirJoy);
+    window.addEventListener('orientationchange', resizeDirJoy);
+}
 
 var visibleBorderSetting = document.getElementById('visBord');
 visibleBorderSetting.onchange = settings.toggleBorder;
@@ -532,17 +578,34 @@ function animloop() {
 
 function gameLoop() {
     // Performance monitoring
+    const p = global.performance || (global.performance = {});
     const now = performance.now();
-    if (global.performance.lastFrameTime) {
-        const frameDelta = now - global.performance.lastFrameTime;
-        global.performance.frameCount++;
-        
-        // Calculate rolling average FPS
-        if (global.performance.frameCount % 60 === 0) {
-            global.performance.averageFPS = 1000 / frameDelta;
+    if (p.lastFrameTime) {
+        const frameDelta = now - p.lastFrameTime;
+        p.lastFrameDelta = frameDelta;
+        p.instantFPS = frameDelta > 0 ? (1000 / frameDelta) : 0;
+
+        const w = p.rollingWindow || 60;
+        if (!Array.isArray(p.deltas)) {
+            p.deltas = [];
+            p.deltasSum = 0;
         }
+
+        p.deltas.push(frameDelta);
+        p.deltasSum += frameDelta;
+
+        if (p.deltas.length > w) {
+            p.deltasSum -= p.deltas.shift();
+        }
+
+        const denom = p.deltas.length || 1;
+        p.avgFrameDelta = p.deltasSum / denom;
+        p.rollingFPS = p.avgFrameDelta > 0 ? (1000 / p.avgFrameDelta) : 0;
+        p.averageFPS = p.rollingFPS;
+
+        p.frameCount++;
     }
-    global.performance.lastFrameTime = now;
+    p.lastFrameTime = now;
     
     if (global.gameStart) {
         // Set image smoothing settings for performance
@@ -614,8 +677,8 @@ function gameLoop() {
         var cellsToDraw = [];
         for (var i = 0; i < users.length; i++) {
             const netPlayer = users[i];
-            let color = 'hsl(' + netPlayer.hue + ', 100%, 50%)';
-            let borderColor = 'hsl(' + netPlayer.hue + ', 100%, 45%)';
+            let color = 'hsl(' + netPlayer.hue + ', 100%, 0%)';
+            let borderColor = 'hsl(' + netPlayer.hue + ', 100%, 0%)';
             const hasId = netPlayer.id !== undefined && netPlayer.id !== null;
             const isMine = hasId ? (netPlayer.id === player.id) : (netPlayer.name === player.name);
             const playerSkinUrl = (netPlayer.skinUrl && typeof netPlayer.skinUrl === 'string' && netPlayer.skinUrl.trim()) ? netPlayer.skinUrl.trim() : null;
@@ -657,19 +720,55 @@ function gameLoop() {
                 totalMass += player.cells[idx].mass || 0;
             }
         }
-        updateMobileScore(totalMass);
+        if (isMobileUI()) {
+            if (now - _lastScoreUpdate >= SCORE_INTERVAL_MS) {
+                updateMobileScore(totalMass);
+                _lastScoreUpdate = now;
+            }
+        }
+
+        if (dirJoy && isMobileUI()) {
+            if (now - _lastJoyUpdate >= JOY_INTERVAL_MS) {
+                const t = window.canvas && window.canvas.target ? window.canvas.target : null;
+                if (t) {
+                    const nx = Math.max(-1, Math.min(1, t.x / (global.screen.width * 0.5)));
+                    const ny = Math.max(-1, Math.min(1, t.y / (global.screen.height * 0.5)));
+                    const eps = 0.01;
+                    const changed = (Math.abs(nx - _lastJoyNX) > eps) || (Math.abs(ny - _lastJoyNY) > eps);
+                    if (changed) {
+                        _lastJoyNX = nx;
+                        _lastJoyNY = ny;
+                        dirJoy.setFromTarget(t, global.screen.width, global.screen.height);
+                    }
+                }
+                _lastJoyUpdate = now;
+            }
+        }
 
         socket.emit('0', window.canvas.target); // playerSendTarget "Heartbeat".
         
-        // Display FPS counter if performance is below target (for debugging)
-        if (global.performance.averageFPS < global.performance.targetFPS * 0.8 && global.performance.frameCount > 120) {
-            graph.fillStyle = 'rgba(255, 255, 0, 0.8)';
+        const perfOn = (p.hud && p.hud.enabled !== false) && (
+            (new URLSearchParams(location.search).get('perf') === '1') ||
+            (p.hud && p.hud.showAlways) ||
+            (p.averageFPS && p.targetFPS && p.averageFPS < p.targetFPS * 0.8 && p.frameCount > 120)
+        );
+
+        if (perfOn) {
+            graph.save();
+            graph.fillStyle = 'rgba(255, 255, 0, 0.85)';
             graph.font = '12px monospace';
-            graph.fillText(`FPS: ${Math.round(global.performance.averageFPS)}`, 10, 20);
+            graph.fillText(`Δ ${p.lastFrameDelta.toFixed(1)}ms (avg ${p.avgFrameDelta.toFixed(1)}ms)`, 10, 20);
+            graph.fillText(`FPS inst ${Math.round(p.instantFPS)} | FPS avg ${Math.round(p.rollingFPS)}`, 10, 36);
+            graph.restore();
         }
     }
     else {
-        updateMobileScore(0);
+        if (isMobileUI()) {
+            if (now - _lastScoreUpdate >= SCORE_INTERVAL_MS) {
+                updateMobileScore(0);
+                _lastScoreUpdate = now;
+            }
+        }
     }
 }
 
