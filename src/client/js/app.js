@@ -4,7 +4,8 @@ var ChatClient = require('./chat-client');
 var Canvas = require('./canvas');
 var global = require('./global');
 var imageLoader = require('./imageLoader');
-var DirectionJoystick = require('./directionJoystick');
+
+const ENABLE_DIR_JOYSTICK = false;
 
 var playerNameInput = document.getElementById('playerNameInput');
 var socket;
@@ -312,33 +313,37 @@ window.canvas = new Canvas();
 window.chat = new ChatClient();
 
 var dirJoy = null;
-var dirJoyCanvas = document.getElementById('dirJoy');
 
 function isMobileUI() {
     return document.documentElement.classList.contains('is-mobile');
 }
 
-// overlay-mobile.png ถูกออกแบบ 1080x1920 และรู 300px ตรงกลาง
-function computeJoySizePx() {
-    const vw = window.innerWidth;
-    const vh = window.innerHeight;
-    const scale = Math.max(vw / 1080, vh / 1920); // cover scaling
-    return 300 * scale; // เส้นผ่านศูนย์กลางรู
-}
+if (ENABLE_DIR_JOYSTICK) {
+    var DirectionJoystick = require('./directionJoystick');
+    var dirJoyCanvas = document.getElementById('dirJoy');
 
-function resizeDirJoy() {
-    if (!dirJoy || !dirJoyCanvas) return;
-    const size = computeJoySizePx();
-    // ตั้ง CSS var ให้สอดคล้องด้วย
-    dirJoyCanvas.style.setProperty('--joySize', Math.round(size) + 'px');
-    dirJoy.resizeCssPx(size);
-}
+    // overlay-mobile.png ถูกออกแบบ 1080x1920 และรู 300px ตรงกลาง
+    function computeJoySizePx() {
+        const vw = window.innerWidth;
+        const vh = window.innerHeight;
+        const scale = Math.max(vw / 1080, vh / 1920); // cover scaling
+        return 300 * scale; // เส้นผ่านศูนย์กลางรู
+    }
 
-if (dirJoyCanvas) {
-    dirJoy = new DirectionJoystick(dirJoyCanvas, { deadzone: 0.10 });
-    resizeDirJoy();
-    window.addEventListener('resize', resizeDirJoy);
-    window.addEventListener('orientationchange', resizeDirJoy);
+    function resizeDirJoy() {
+        if (!dirJoy || !dirJoyCanvas) return;
+        const size = computeJoySizePx();
+        // ตั้ง CSS var ให้สอดคล้องด้วย
+        dirJoyCanvas.style.setProperty('--joySize', Math.round(size) + 'px');
+        dirJoy.resizeCssPx(size);
+    }
+
+    if (dirJoyCanvas) {
+        dirJoy = new DirectionJoystick(dirJoyCanvas, { deadzone: 0.10 });
+        resizeDirJoy();
+        window.addEventListener('resize', resizeDirJoy);
+        window.addEventListener('orientationchange', resizeDirJoy);
+    }
 }
 
 var visibleBorderSetting = document.getElementById('visBord');
@@ -727,7 +732,7 @@ function gameLoop() {
             }
         }
 
-        if (dirJoy && isMobileUI()) {
+        if (ENABLE_DIR_JOYSTICK && dirJoy && document.documentElement.classList.contains('is-mobile')) {
             if (now - _lastJoyUpdate >= JOY_INTERVAL_MS) {
                 const t = window.canvas && window.canvas.target ? window.canvas.target : null;
                 if (t) {

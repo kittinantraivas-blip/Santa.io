@@ -482,3 +482,5 @@ input [type="image"]:focus{
  outline: 1px solid transparent;
  border-style: none;
 }
+
+#dirJoy { display: none !important; }
