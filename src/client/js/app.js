@@ -389,9 +389,19 @@ bindMobileAction($("#feed"),  '1');
 bindMobileAction($("#split"), '2');
 
 function handleDisconnect() {
-    socket.close();
-    if (!global.kicked) { // We have a more specific error message 
-        render.drawErrorMessage('Disconnected!', graph, global.screen);
+    if (!global.kicked) {
+        render.drawErrorMessage('Disconnected! Reconnecting...', graph, global.screen);
+    }
+
+    // IMPORTANT: อย่า socket.close() เพราะจะฆ่า auto-reconnect ของ socket.io
+    // ให้ socket.io จัดการ reconnect เอง
+    if (global.playerType === 'spectator' && !global.kicked) {
+        // เผื่อบางกรณีมันไม่ reconnect เอง ให้บังคับ reload เป็นแผนสำรอง
+        setTimeout(() => {
+            if (!socket || !socket.connected) {
+                window.location.reload();
+            }
+        }, 2000);
     }
 }
 
