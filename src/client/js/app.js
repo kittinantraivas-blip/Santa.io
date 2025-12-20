@@ -389,21 +389,16 @@ bindMobileAction($("#feed"),  '1');
 bindMobileAction($("#split"), '2');
 
 function handleDisconnect() {
+    // IMPORTANT: ห้าม socket.close() ไม่งั้น socket.io จะไม่ reconnect
     if (!global.kicked) {
+        // จะให้ขึ้นข้อความอะไรก็ได้ แต่ไม่ต้องปิด socket
         render.drawErrorMessage('Disconnected! Reconnecting...', graph, global.screen);
     }
 
-    // IMPORTANT: อย่า socket.close() เพราะจะฆ่า auto-reconnect ของ socket.io
-    // ให้ socket.io จัดการ reconnect เอง
-    if (global.playerType === 'spectator' && !global.kicked) {
-        // เผื่อบางกรณีมันไม่ reconnect เอง ให้บังคับ reload เป็นแผนสำรอง
-        setTimeout(() => {
-            if (!socket || !socket.connected) {
-                window.location.reload();
-            }
-        }, 2000);
-    }
+    // (แนะนำ) ทำให้สถานะเกมหยุดชั่วคราว เพื่อไม่ให้ดูเหมือนยัง live
+    global.gameStart = false;
 }
+
 
 // socket stuff.
 function setupSocket(socket) {
