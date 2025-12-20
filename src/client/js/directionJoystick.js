@@ -105,7 +105,7 @@ class DirectionJoystick {
     ctx.moveTo(this.center.x, this.center.y);
     ctx.lineTo(this.stickPos.x, this.stickPos.y);
     ctx.strokeStyle = "#666";
-    ctx.lineWidth = 4;
+    ctx.lineWidth = 0;
     ctx.lineCap = "round";
     ctx.stroke();
     ctx.restore();
@@ -116,7 +116,7 @@ class DirectionJoystick {
     ctx.arc(this.stickPos.x, this.stickPos.y, this.stickRadius, 0, Math.PI * 2);
     ctx.fillStyle = "#ffffffff";
     ctx.fill();
-    ctx.lineWidth = 3;
+    ctx.lineWidth = 0;
     ctx.strokeStyle = "#888";
     ctx.stroke();
     ctx.restore();
