@@ -26,7 +26,7 @@ module.exports = {
     continuity: false,
     startPingTime: 0,
     toggleMassState: 0,
-    backgroundColor: '#000000ff',
+    backgroundColor: '#00FFFF',
     lineColor: '#ffffffff',
     
     // Image loading and rendering configuration

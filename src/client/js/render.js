@@ -432,49 +432,8 @@ const drawCells = (cells, playerConfig, toggleMassState, borders, graph) => {
 };
 
 const drawGrid = (global, player, screen, graph) => {
-    // Draw background image if available
-    const mapImage = imageLoader.getImage('map');
-    
-    if (mapImage && !imageLoader.failedToLoad) {
-        // Draw tiled background with proper parallax scrolling
-        graph.save();
-        
-        const tileSize = 400; // Size of each background tile
-        
-        // Calculate offset for parallax effect (opposite movement)
-        const offsetX = (-player.x) % tileSize;
-        const offsetY = (-player.y) % tileSize;
-        
-        graph.globalAlpha = 1; // Make background subtle
-        
-        // Draw tiles to cover entire screen plus buffer
-        for (let x = offsetX - tileSize; x < screen.width + tileSize; x += tileSize) {
-            for (let y = offsetY - tileSize; y < screen.height + tileSize; y += tileSize) {
-                graph.drawImage(mapImage, x, y, tileSize, tileSize);
-            }
-        }
-        
-        graph.restore();
-    }
-    
-    // Draw grid lines over the background
-    graph.lineWidth = 0;
-    graph.strokeStyle = global.lineColor;
-    graph.globalAlpha = 0;
-    graph.beginPath();
-
-    for (let x = -player.x; x < screen.width; x += screen.height / 18) {
-        graph.moveTo(x, 0);
-        graph.lineTo(x, screen.height);
-    }
-
-    for (let y = -player.y; y < screen.height; y += screen.height / 18) {
-        graph.moveTo(0, y);
-        graph.lineTo(screen.width, y);
-    }
-
-    graph.stroke();
-    graph.globalAlpha = 1;
+    // Background is now drawn in app.js as a solid fill.
+    return;
 };
 
 const drawBorder = (borders, graph) => {

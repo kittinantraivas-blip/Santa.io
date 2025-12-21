@@ -621,18 +621,9 @@ function gameLoop() {
             }
         }
         
-        // Clear canvas with background color or transparent for background image
-        const mapImage = imageLoader.getImage('map');
-        if (mapImage && !imageLoader.failedToLoad && !global.images.forceFallback) {
-            // Use transparent background when we have a background image
-            graph.clearRect(0, 0, global.screen.width, global.screen.height);
-        } else {
-            // Use solid background color as fallback
-            graph.fillStyle = global.backgroundColor;
-            graph.fillRect(0, 0, global.screen.width, global.screen.height);
-        }
-
-        render.drawGrid(global, player, global.screen, graph);
+        // Solid background fill (map/grid removed)
+        graph.fillStyle = global.backgroundColor;
+        graph.fillRect(0, 0, global.screen.width, global.screen.height);
         
         // Performance optimization: only render visible entities
         const visibleBounds = {

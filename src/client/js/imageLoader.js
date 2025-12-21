@@ -30,7 +30,6 @@ const ImageLoader = {
         food4: 'img/food4.png',
         massFood: 'img/massFood.png',
         virus: 'img/virus.png',
-        map: 'img/map.png',
         direction1: 'img/turrets/direction1.png',
         direction2: 'img/turrets/direction2.png',
         direction3: 'img/turrets/direction3.png',
