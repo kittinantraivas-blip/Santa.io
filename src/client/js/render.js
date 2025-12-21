@@ -133,7 +133,7 @@ const drawFood = (position, food, graph) => {
     
     if (foodImage && !imageLoader.failedToLoad) {
         // Draw food.png above the original circle
-        const diameter = food.radius * 8.5;
+        const diameter = food.radius * 7;
         
         graph.save();
     
@@ -148,7 +148,7 @@ const drawFood = (position, food, graph) => {
 
         // Second: Draw food.png image on the top layer
         graph.drawImage(foodImage, 
-            position.x - food.radius * 4.25, position.y - food.radius * 4,
+            position.x - food.radius * 3.5, position.y - food.radius * 3.25,
             diameter, diameter);
 
         
