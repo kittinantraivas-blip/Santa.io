@@ -620,6 +620,123 @@ function gameLoop() {
                 graph.imageSmoothingQuality = global.images.imageSmoothingQuality;
             }
         }
+
+        if (global.playerType === 'spectator') {
+            const screenW = global.screen.width;
+            const screenH = global.screen.height;
+            const gameW = global.game.width;
+            const gameH = global.game.height;
+
+            const scale = Math.min(screenW / gameW, screenH / gameH);
+            const viewWorldW = screenW / scale;
+            const viewWorldH = screenH / scale;
+            const camX = gameW / 2;
+            const camY = gameH / 2;
+
+            let topLeftX = camX - viewWorldW / 2;
+            let topLeftY = camY - viewWorldH / 2;
+
+            if (viewWorldW < gameW) {
+                topLeftX = Math.max(0, Math.min(gameW - viewWorldW, topLeftX));
+            } else {
+                topLeftX = (gameW - viewWorldW) / 2;
+            }
+
+            if (viewWorldH < gameH) {
+                topLeftY = Math.max(0, Math.min(gameH - viewWorldH, topLeftY));
+            } else {
+                topLeftY = (gameH - viewWorldH) / 2;
+            }
+
+            const offsetX = -topLeftX * scale;
+            const offsetY = -topLeftY * scale;
+
+            graph.setTransform(1, 0, 0, 1, 0, 0);
+            graph.clearRect(0, 0, screenW, screenH);
+            graph.fillStyle = global.backgroundColor;
+            graph.fillRect(0, 0, screenW, screenH);
+
+            // Fit entire map in view; letterbox via world->screen transform.
+            graph.setTransform(scale, 0, 0, scale, offsetX, offsetY);
+
+            const visibleBounds = {
+                left: topLeftX - 100,
+                right: topLeftX + viewWorldW + 100,
+                top: topLeftY - 100,
+                bottom: topLeftY + viewWorldH + 100
+            };
+
+            foods.forEach(food => {
+                if (food.x >= visibleBounds.left && food.x <= visibleBounds.right &&
+                    food.y >= visibleBounds.top && food.y <= visibleBounds.bottom) {
+                    render.drawFood({ x: food.x, y: food.y }, food, graph);
+                }
+            });
+
+            fireFood.forEach(mass => {
+                if (mass.x >= visibleBounds.left && mass.x <= visibleBounds.right &&
+                    mass.y >= visibleBounds.top && mass.y <= visibleBounds.bottom) {
+                    render.drawFireFood({ x: mass.x, y: mass.y }, mass, playerConfig, graph);
+                }
+            });
+
+            viruses.forEach(virus => {
+                if (virus.x >= visibleBounds.left && virus.x <= visibleBounds.right &&
+                    virus.y >= visibleBounds.top && virus.y <= visibleBounds.bottom) {
+                    render.drawVirus({ x: virus.x, y: virus.y }, virus, graph);
+                }
+            });
+
+            const borders = {
+                left: 0,
+                right: gameW,
+                top: 0,
+                bottom: gameH
+            };
+            if (global.borderDraw) {
+                render.drawBorder(borders, graph);
+            }
+
+            var cellsToDraw = [];
+            for (var i = 0; i < users.length; i++) {
+                const netPlayer = users[i];
+                let color = 'hsl(' + netPlayer.hue + ', 100%, 0%)';
+                let borderColor = 'hsl(' + netPlayer.hue + ', 100%, 0%)';
+                const hasId = netPlayer.id !== undefined && netPlayer.id !== null;
+                const isMine = hasId ? (netPlayer.id === player.id) : (netPlayer.name === player.name);
+                const playerSkinUrl = (netPlayer.skinUrl && typeof netPlayer.skinUrl === 'string' && netPlayer.skinUrl.trim()) ? netPlayer.skinUrl.trim() : null;
+                const playerOverlayColor = (netPlayer.overlayColor && typeof netPlayer.overlayColor === 'string' && HEX_COLOR_REGEX.test(netPlayer.overlayColor)) ? netPlayer.overlayColor : null;
+                const rawTurret = (netPlayer.turretUrl && typeof netPlayer.turretUrl === 'string') ? netPlayer.turretUrl.trim() : '';
+                const playerTurretUrl = (rawTurret && rawTurret.startsWith('img/')) ? rawTurret : null;
+                for (var j = 0; j < netPlayer.cells.length; j++) {
+                    const cell = netPlayer.cells[j];
+                    if (cell.x >= visibleBounds.left && cell.x <= visibleBounds.right &&
+                        cell.y >= visibleBounds.top && cell.y <= visibleBounds.bottom) {
+                        cellsToDraw.push({
+                            color: color,
+                            borderColor: borderColor,
+                            mass: cell.mass,
+                            name: netPlayer.name,
+                            radius: cell.radius,
+                            x: cell.x,
+                            y: cell.y,
+                            angle: (typeof cell.angle === 'number') ? cell.angle : 0,
+                            isLocal: isMine,
+                            skinUrl: playerSkinUrl,
+                            overlayColor: playerOverlayColor,
+                            turretUrl: playerTurretUrl
+                        });
+                    }
+                }
+            }
+            cellsToDraw.sort(function (obj1, obj2) {
+                return obj1.mass - obj2.mass;
+            });
+            render.drawCells(cellsToDraw, playerConfig, global.toggleMassState, borders, graph);
+
+            graph.setTransform(1, 0, 0, 1, 0, 0);
+            return;
+        }
         
         // Solid background fill (map/grid removed)
         graph.fillStyle = global.backgroundColor;
@@ -773,8 +890,8 @@ window.addEventListener('resize', resize);
 function resize() {
     if (!socket) return;
 
-    player.screenWidth = c.width = global.screen.width = global.playerType == 'player' ? window.innerWidth : global.game.width;
-    player.screenHeight = c.height = global.screen.height = global.playerType == 'player' ? window.innerHeight : global.game.height;
+    player.screenWidth = c.width = global.screen.width = window.innerWidth;
+    player.screenHeight = c.height = global.screen.height = window.innerHeight;
 
     if (global.playerType == 'spectator') {
         player.x = global.game.width / 2;
